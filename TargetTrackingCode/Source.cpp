@@ -9,12 +9,23 @@ using namespace cv;
 using namespace std;
 
 int main(int argc, char* argv[]) {
+	char output[80];
 	int thresh = 100;
-	VideoCapture cap("Name of video");		// input of video. currently file name in the src directory. 
+	std::string pr;
+	const std::string videoStreamAddress = "http://192.168.254.1:8090/?action=stream";
+	VideoCapture cap(videoStreamAddress);		// input of video. currently file name in the src directory. 
 	if (!cap.isOpened()) {
 		cout << "Opening file failed" << endl;
 		return -1;
 	}
+	namedWindow("Movement", CV_WINDOW_AUTOSIZE);
+
+	int frame_width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
+	int frame_height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
+	
+
+
+
 	////////////////////////////////////////////////
 	/////////////////////////////////////////////////
 
@@ -25,9 +36,12 @@ int main(int argc, char* argv[]) {
 	//////////////////////////////////////////////
 	//////////////////////////////////////////////
 	while (1) {
+		std::string output = "(";
 		Mat frame;
 		Mat gray;
 		Mat copyy;
+		int c = frame_width / 9;
+		int r = frame_height / 9;
 		vector<vector<Point> > contours;
 
 		bool bSuccess = cap.read(frame);
@@ -37,12 +51,23 @@ int main(int argc, char* argv[]) {
 		}
 		CvMemStorage* storage = cvCreateMemStorage(0);
 		vector<vector<Point> >  contour;
+
+
+		// Convert input image to HSV
+		cv::Mat hsv_image;
+		cv::cvtColor(frame, hsv_image, cv::COLOR_BGR2HSV);
 		
+		 	// Threshold the HSV image, keep only the red pixels
+		 	cv::Mat lower_red_hue_range;
+		 	cv::Mat upper_red_hue_range;
+		 	cv::inRange(hsv_image, cv::Scalar(0, 100, 100), cv::Scalar(10, 255, 255), lower_red_hue_range);
+	 	cv::inRange(hsv_image, cv::Scalar(160, 100, 100), cv::Scalar(179, 255, 255), upper_red_hue_range);
+
+		cv::Mat red_hue_image;
+			cv::addWeighted(lower_red_hue_range, 1.0, upper_red_hue_range, 1.0, 0.0, red_hue_image);
 		
-		cvtColor(frame, gray, CV_BGR2GRAY);
-		
-		threshold(gray, gray, 240, 255, CV_THRESH_BINARY);
-		findContours(gray, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+			cv::GaussianBlur(red_hue_image, red_hue_image, cv::Size(1, 1), 2, 2);
+		findContours(red_hue_image, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
 
 		contour.resize(contours.size());
 
@@ -54,32 +79,54 @@ int main(int argc, char* argv[]) {
 			//if there are 3  vertices  in the contour(It should be a triangle)
 			if (contour[k].size() == 3 && contour[k][0].y < 600 && contour[k][0].x > 100) // filtering out the arms and problem sections of the submerine.
 			{
-				
+
 				vector<Rect> boundRect(contours.size());
 				vector<Point2f>center(contours.size());
 				vector<float>radius(contours.size());
 
-			
-				
-					boundRect[k] = boundingRect(Mat(contour[k]));
-					minEnclosingCircle((Mat)contour[k], center[k], radius[k]);
-				
 
 
-				/// Draw polygon around target
+				boundRect[k] = boundingRect(Mat(contour[k]));
+				minEnclosingCircle((Mat)contour[k], center[k], radius[k]);
 
-					rectangle(frame, boundRect[k].tl(), boundRect[k].br(), Scalar(255, 0, 0), 2, 8, 0);
-					circle(frame, center[k], 5, Scalar(0,255,0), 10, 1, 0);
-			
+
+
 				
+
+				rectangle(frame, boundRect[k].tl(), boundRect[k].br(), Scalar(255, 0, 0), 2, 8, 0);
+				circle(frame, center[k], 5, Scalar(0, 255, 0), 10, 1, 0);
+				stringstream ss;
+				ss << "(";
+				
+				for (int i = 0; i < 9; i++) {
+					if (center[k].x >= (c*1) && center[k].x < (c)* (i+1)) {
+						ss << i;
+						break;
+					}
+				}
+				ss << ", ";
+				for (int i = 0; i < 9; i++) {
+					if (center[k].y >= (r * 1) && center[k].y < (r)* (i + 1)) {
+						ss << i;
+						break;
+					}
+				}
+
+				ss << ")";
+				pr = ss.str();
+				break;
 			}
 			else {
-
+				output ="object not detected";
 			}
 		}
-
-
+		
+		
+		
+		putText(frame, pr, cvPoint(30, 45),
+			FONT_HERSHEY_COMPLEX_SMALL, 0.8, cvScalar(255, 0, 0), 1, CV_AA);
 		imshow("Movement", frame);
+	
 
 		if (waitKey(30) == 27) {
 			cout << "quit" << endl;
