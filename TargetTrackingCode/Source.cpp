@@ -9,11 +9,13 @@ using namespace cv;
 using namespace std;
 
 int main(int argc, char* argv[]) {
+
 	char output[80];
 	int thresh = 100;
 	std::string pr;
 	const std::string videoStreamAddress = "http://192.168.254.1:8090/?action=stream";
-	VideoCapture cap(videoStreamAddress);		// input of video. currently file name in the src directory. 
+//	VideoCapture cap(videoStreamAddress);	// input of video. currently file name//// in the src directory. 
+	VideoCapture cap(0);
 	if (!cap.isOpened()) {
 		cout << "Opening file failed" << endl;
 		return -1;
@@ -22,6 +24,8 @@ int main(int argc, char* argv[]) {
 
 	int frame_width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
 	int frame_height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
+	int c = frame_width / 3;
+	int r = frame_height / 3;
 	
 
 
@@ -40,8 +44,6 @@ int main(int argc, char* argv[]) {
 		Mat frame;
 		Mat gray;
 		Mat copyy;
-		int c = frame_width / 9;
-		int r = frame_height / 9;
 		vector<vector<Point> > contours;
 
 		bool bSuccess = cap.read(frame);
@@ -98,15 +100,15 @@ int main(int argc, char* argv[]) {
 				stringstream ss;
 				ss << "(";
 				
-				for (int i = 0; i < 9; i++) {
-					if (center[k].x >= (c*1) && center[k].x < (c)* (i+1)) {
+				for (int i = -1; i <= 1; i++) {
+					if (center[k].x >= (c*(i+1)) && center[k].x < (c)* (i+2)) {
 						ss << i;
 						break;
 					}
 				}
 				ss << ", ";
-				for (int i = 0; i < 9; i++) {
-					if (center[k].y >= (r * 1) && center[k].y < (r)* (i + 1)) {
+				for (int i = -1; i <= 1; i++) {
+					if (center[k].y >= (r * (i+1)) && center[k].y < (r)* (i + 2)) {
 						ss << i;
 						break;
 					}
